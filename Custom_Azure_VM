@@ -1,0 +1,33 @@
+$VMInstanceSize = "large"
+$DataDiskStorage = "https://portalvhds****************.blob.core.windows.net/vhds"
+$CloudServiceName = "skynet****"
+$SQLVMName = "plinker1-test2"
+$SQLImageName = "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201407.01-en.us-127GB.vhd"
+
+New-AzureVMConfig -Name $SQLVMName -InstanceSize Large -ImageName $SQLImageName `
+| Add-AzureProvisioningConfig -Windows -Password poop1234! -AdminUsername admintest `
+| New-AzureVM -ServiceName $CloudServiceName -WaitForBoot
+
+Get-AzureVM $CloudServiceName -Name $SQLVMName `
+ |Add-AzureDataDisk -CreateNew -DiskSizeInGB 600 -DiskLabel "SQL-Data" -LUN 1 -MediaLocation "$DataDiskStorage/SQL-Data.vhd" `
+ |Add-AzureDataDisk -CreateNew -DiskSizeInGB 600 -DiskLabel "TempDB" -LUN 2 -MediaLocation "$DataDiskStorage/TempDB.vhd" `
+ |Add-AzureDataDisk -CreateNew -DiskSizeInGB 600 -DiskLabel "TLogs" -LUN 3 -MediaLocation "$DataDiskStorage/TLogs.vhd" `
+ |Add-AzureDataDisk -CreateNew -DiskSizeInGB 600 -DiskLabel "Backup" -LUN 4 -MediaLocation "$DataDiskStorage/Backup.vhd" `
+ | Update-AzureVM 
+
+
+
+InstallWinRMCert -CloudServiceName $CloudServiceName -VMName $SQLVMName
+
+$URI = Get-AzureWinRMUri -ServiceName $CloudServiceName -Name $SQLVMName
+$Credential = Get-Credential
+
+
+Invoke-Command -ConnectionUri $URI.ToString() -Credential $Credential -ScriptBlock {
+
+$PhysicalDisks = Get-StorageSubSystem -FriendlyName "Storage Spaces*" | Get-PhysicalDisk -CanPool $True
+$poop4 = New-StoragePool -FriendlyName "Storage_pool1" -StorageSubsystemFriendlyName "Storage Spaces*" -PhysicalDisks $PhysicalDisks
+
+ 
+$poop4 `
+|New-VirtualDisk -FriendlyName "UserData" -Size 1000GB -ProvisioningType Thin |Initialize-Disk -PassThru |New-Partition -AssignDriveLetter -UseMaximumSize |Format-Volume -Confirm:$false
