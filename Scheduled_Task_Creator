@@ -1,0 +1,9 @@
+Import-Module ScheduledTasks
+$startAzureVM = "Get-AzureService | Foreach-Object { Stop-AzureVM -ServiceName $_.ServiceName -Name""""*""""-Force}"
+$startTaskTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 5:00:00PM 
+$startTaskAction = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument $startAzureVM 
+$startTaskSettingsSet = New-ScheduledTaskSettingsSet  -AllowStartIfOnBatteries  
+ 
+$startScheduledTask = New-ScheduledTask -Action $startTaskAction -Trigger $startTaskTrigger -Settings $startTaskSettingsSet 
+ 
+Register-ScheduledTask -TaskName "azureVMTurnOff" -InputObject $startScheduledTask 
